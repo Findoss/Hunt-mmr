@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hunt - MMR</title>
+  </head>
+  <body>
+    <input type="file" id="input" multiple />
+    <div id="raw"></div>
+    <pre id="data"></pre>
+    <script>
+      // Vladislove
+      const VLS = "data-v0";
+
+      function readFile(file) {
+        return new Promise((res, rej) => {
+          let reader = new FileReader();
+
+          reader.readAsText(file);
+
+          reader.onload = function () {
+            res(reader.result);
+          };
+
+          reader.onerror = function () {
+            rej(reader.error);
+          };
+        });
+      }
+
+      function getFileData(raw) {
+        const arr = raw.split("\n");
+        const data = arr
+          .map((v) => {
+            const $el = document.createElement("div");
+            $el.innerHTML = v;
+
+            const $params = $el.querySelector("attr");
+
+            if ($params) {
+              return {
+                name: $params.getAttribute("name"),
+                value: $params.getAttribute("value"),
+              };
+            }
+            return null;
+          })
+          .filter((v) => v !== null)
+          .filter((v) => /MissionBagPlayer/.test(v.name))
+          .filter((v) => /blood_line_name/.test(v.name) || /mmr/.test(v.name))
+          .map((v, i, arr) => {
+            if (i % 2 === 0) {
+              return {
+                user: arr[i].value,
+                mmr: arr[i + 1].value,
+              };
+            }
+            return null;
+          })
+          .filter((v) => v !== null);
+
+        return data;
+      }
+
+      function getLS() {
+        return JSON.parse(localStorage.getItem(VLS)) ?? [];
+      }
+
+      function saveLS(newData) {
+        const oldData = getLS();
+        const data = merge(newData, oldData);
+        console.log(data);
+        localStorage.setItem(VLS, JSON.stringify(data));
+        localStorage.setItem(`${VLS}_length`, data.length);
+      }
+
+      function merge(newData, oldData) {
+        const data = [...oldData];
+
+        newData.forEach((v, i) => {
+          let index = data.findIndex((t) => v.user === t.user);
+          if (index > 0) {
+            data[index] = v;
+          } else {
+            data.push(v);
+          }
+        });
+
+        return data;
+      }
+
+      const reader = new FileReader();
+      const $file = document.getElementById("input");
+      const $raw = document.getElementById("raw");
+      const $data = document.getElementById("data");
+
+      $file.addEventListener("change", async () => {
+        const selectedFile = $file.files[0];
+        console.log(selectedFile);
+
+        const raw = await readFile(selectedFile);
+        const data = getFileData(raw);
+        saveLS(data);
+
+        console.log(data);
+
+        // $raw.innerText = data;
+        $data.innerHTML = data.map((v) => `${v.user} = ${v.mmr}`).join("\n");
+      });
+    </script>
+  </body>
+</html>
