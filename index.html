@@ -7,12 +7,36 @@
     <title>Hunt - MMR</title>
   </head>
   <body>
-    <input type="file" id="input" multiple />
+    <pre>
+      steam\steamapps\common\Hunt Showdown\user\profiles\default\attributes
+    </pre>
+    <input type="file" id="input" />
     <div id="raw"></div>
     <pre id="data"></pre>
+    <canvas id="chart"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-      // Vladislove
-      const VLS = "data-v0";
+      const VLS = "data-v01";
+      const reader = new FileReader();
+      const $file = document.getElementById("input");
+      const $chart = document.getElementById("chart");
+
+      const colors = [
+        "Red",
+        "Blue",
+        "Green",
+        "Fuchsia",
+        "Maroon",
+        "Purple",
+        "Olive",
+        "Lime",
+        "Aqua",
+        "Teal",
+        "Navy",
+        "Yellow",
+        "Fuchsia",
+      ];
 
       function readFile(file) {
         return new Promise((res, rej) => {
@@ -49,52 +73,76 @@
           })
           .filter((v) => v !== null)
           .filter((v) => /MissionBagPlayer/.test(v.name))
-          .filter((v) => /blood_line_name/.test(v.name) || /mmr/.test(v.name))
+          .filter(
+            (v) =>
+              /blood_line_name/.test(v.name) ||
+              /mmr/.test(v.name) ||
+              /profileid/.test(v.name)
+          )
           .map((v, i, arr) => {
-            if (i % 2 === 0) {
+            if (i % 3 === 0) {
+              const id = arr[i + 2].value;
+              const user = arr[i].value;
+              const mmr = arr[i + 1].value;
+
               return {
-                user: arr[i].value,
-                mmr: arr[i + 1].value,
+                id,
+                user,
+                mmr,
               };
             }
             return null;
           })
-          .filter((v) => v !== null);
+          .filter((v) => v !== null)
+          .sort((a, b) => b.mmr - a.mmr)
+          .reduce((acc, v, i) => {
+            acc[v.id] = {
+              nikname: v.user,
+              mmr: [v.mmr, v.mmr, v.mmr],
+            };
+
+            return acc;
+          }, {});
 
         return data;
       }
 
-      function getLS() {
-        return JSON.parse(localStorage.getItem(VLS)) ?? [];
-      }
+      function render(data) {
+        const $data = document.getElementById("data");
 
-      function saveLS(newData) {
-        const oldData = getLS();
-        const data = merge(newData, oldData);
-        console.log(data);
-        localStorage.setItem(VLS, JSON.stringify(data));
-        localStorage.setItem(`${VLS}_length`, data.length);
-      }
+        $data.innerHTML = Object.values(data)
+          .map((v) => `${v.nikname} = ${v.mmr[0]}`)
+          .join("\n");
 
-      function merge(newData, oldData) {
-        const data = [...oldData];
+        const maxCountGame = Math.max(
+          ...Object.values(data).reduce((acc, v) => [v.mmr.length, ...acc], [])
+        );
 
-        newData.forEach((v, i) => {
-          let index = data.findIndex((t) => v.user === t.user);
-          if (index > 0) {
-            data[index] = v;
-          } else {
-            data.push(v);
-          }
+        const datasets = Object.entries(data).map(([k, v], i) => {
+          return {
+            label: v.nikname,
+            data: v.mmr,
+            backgroundColor: colors[i],
+            borderColor: colors[i],
+          };
         });
 
-        return data;
+        const configChart = {
+          type: "line",
+          data: {
+            labels: new Array(maxCountGame).fill(null).map((v, i) => i),
+            datasets: datasets,
+          },
+          options: {
+            plugins: {
+              legend: {
+                align: "start",
+              },
+            },
+          },
+        };
+        const myChart = new Chart($chart, configChart);
       }
-
-      const reader = new FileReader();
-      const $file = document.getElementById("input");
-      const $raw = document.getElementById("raw");
-      const $data = document.getElementById("data");
 
       $file.addEventListener("change", async () => {
         const selectedFile = $file.files[0];
@@ -102,12 +150,10 @@
 
         const raw = await readFile(selectedFile);
         const data = getFileData(raw);
-        saveLS(data);
 
         console.log(data);
 
-        // $raw.innerText = data;
-        $data.innerHTML = data.map((v) => `${v.user} = ${v.mmr}`).join("\n");
+        render(data);
       });
     </script>
   </body>
