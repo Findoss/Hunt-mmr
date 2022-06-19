@@ -13,30 +13,11 @@
     <input type="file" id="input" />
     <div id="raw"></div>
     <pre id="data"></pre>
-    <canvas id="chart"></canvas>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       const VLS = "data-v01";
       const reader = new FileReader();
       const $file = document.getElementById("input");
-      const $chart = document.getElementById("chart");
-
-      const colors = [
-        "Red",
-        "Blue",
-        "Green",
-        "Fuchsia",
-        "Maroon",
-        "Purple",
-        "Olive",
-        "Lime",
-        "Aqua",
-        "Teal",
-        "Navy",
-        "Yellow",
-        "Fuchsia",
-      ];
 
       function readFile(file) {
         return new Promise((res, rej) => {
@@ -110,38 +91,10 @@
       function render(data) {
         const $data = document.getElementById("data");
 
+        $data.innerHTML = "";
         $data.innerHTML = Object.values(data)
           .map((v) => `${v.nikname} = ${v.mmr[0]}`)
           .join("\n");
-
-        const maxCountGame = Math.max(
-          ...Object.values(data).reduce((acc, v) => [v.mmr.length, ...acc], [])
-        );
-
-        const datasets = Object.entries(data).map(([k, v], i) => {
-          return {
-            label: v.nikname,
-            data: v.mmr,
-            backgroundColor: colors[i],
-            borderColor: colors[i],
-          };
-        });
-
-        const configChart = {
-          type: "line",
-          data: {
-            labels: new Array(maxCountGame).fill(null).map((v, i) => i),
-            datasets: datasets,
-          },
-          options: {
-            plugins: {
-              legend: {
-                align: "start",
-              },
-            },
-          },
-        };
-        const myChart = new Chart($chart, configChart);
       }
 
       $file.addEventListener("change", async () => {
@@ -150,8 +103,6 @@
 
         const raw = await readFile(selectedFile);
         const data = getFileData(raw);
-
-        console.log(data);
 
         render(data);
       });
